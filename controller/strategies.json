@@ -1,0 +1,14 @@
+{
+  "strategies": [
+    {
+      "id": "pairsTrade",
+      "enabled": true,
+      "interval_sec": 60,
+      "executor": {
+        "type": "python",
+        "module": "strategies.pairsTrade",
+        "function": "run_strategy"
+      }
+    }
+  ]
+}

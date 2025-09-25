@@ -1,0 +1,5 @@
+alpaca
+uvicorn
+fastapi
+polygon
+httpx
