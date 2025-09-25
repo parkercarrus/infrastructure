@@ -4,6 +4,7 @@ from typing import List, Dict, Any, Optional
 import os
 import pandas as pd
 
+
 try:
     from polygon import RESTClient
 except Exception:
@@ -16,7 +17,7 @@ class PairsTrading:
             raise RuntimeError("polygon package not installed. `pip install polygon-api-client`")
         self.client = RESTClient(api_key)
 
-    def get_daily_prices(self, ticker: str, days: int) -> pd.DataFrame:
+    def getDailyPrices(self, ticker: str, days: int) -> pd.DataFrame:
         end_date = datetime.utcnow().date()
         start_date = end_date - timedelta(days=days)
         bars = self.client.get_aggs(
@@ -33,14 +34,14 @@ class PairsTrading:
         df = pd.DataFrame(data).sort_values("timestamp")
         return df
 
-    def pairs_trading_strategy(self, tickers: List[str], days: int = 30) -> pd.DataFrame:
+    def pairsTradingStrategy(self, tickers: List[str], days: int = 30) -> pd.DataFrame:
         if len(tickers) != 2:
             raise ValueError("tickers must be exactly two symbols, e.g., ['AAPL','MSFT']")
         t0, t1 = tickers
 
         # fetch and standardize closes
-        p0 = self.get_daily_prices(t0, days).rename(columns={"close": f"close_{t0}"})
-        p1 = self.get_daily_prices(t1, days).rename(columns={"close": f"close_{t1}"})
+        p0 = self.getDailyPrices(t0, days).rename(columns={"close": f"close_{t0}"})
+        p1 = self.getDailyPrices(t1, days).rename(columns={"close": f"close_{t1}"})
 
         df = p0.merge(p1, on="timestamp", how="inner")
         for t in tickers:
@@ -58,20 +59,20 @@ class PairsTrading:
         df.loc[df["spread"] < mu - sd, "signal"] =  1   # Long t0, Short t1
         return df
 
-    def latest_decisions(self, tickers: List[str], days: int, lot: int) -> pd.DataFrame:
+    def latestDecisions(self, tickers: List[str], days: int, lot: int) -> pd.DataFrame:
         t0, t1 = tickers
-        hist = self.pairs_trading_strategy(tickers, days)
+        hist = self.pairsTradingStrategy(tickers, days)
         if hist.empty:
             return pd.DataFrame(columns=["QTY", "side"], index=pd.Index(tickers, name="symbol"))
 
         sig = int(hist.iloc[-1]["signal"])
         # Map signal to per-symbol action
         if sig == 1:
-            actions = {t0: ("BUY", lot),  t1: ("SELL", lot)}
+            actions = {t0: ("buy", lot),  t1: ("sell", lot)}
         elif sig == -1:
-            actions = {t0: ("SELL", lot), t1: ("BUY", lot)}
+            actions = {t0: ("sell", lot), t1: ("buy", lot)}
         else:
-            actions = {t0: ("HOLD", 0),   t1: ("HOLD", 0)}
+            actions = {t0: ("hold", 0),   t1: ("hold", 0)}
 
         df = pd.DataFrame.from_dict(
             {sym: {"QTY": qty, "side": side} for sym, (side, qty) in actions.items()},
@@ -81,7 +82,7 @@ class PairsTrading:
         return df
 
 
-def _resolve_params(ctx: Dict[str, Any]) -> Dict[str, Any]:
+def resolveParameters(ctx: Dict[str, Any]) -> Dict[str, Any]:
     params = (ctx.get("params") or {})
     tickers = params.get("tickers", ["AAPL", "MSFT"])
     days = int(params.get("days", 30))
@@ -89,26 +90,26 @@ def _resolve_params(ctx: Dict[str, Any]) -> Dict[str, Any]:
     return {"tickers": tickers, "days": days, "lot": lot}
 
 
-def _resolve_api_key(ctx: Dict[str, Any]) -> Optional[str]:
+def resolveAPIKey(ctx: Dict[str, Any]) -> Optional[str]:
     return os.getenv("POLYGON_API_KEY") or (ctx.get("secrets") or {}).get("polygon")
 
 
-def run_strategy(ctx: Dict[str, Any]) -> pd.DataFrame:
+def runStrategy(ctx: Dict[str, Any]) -> pd.DataFrame:
     """
     Controller entrypoint. Returns a DataFrame indexed by symbol with columns: QTY, side.
     - ctx['params'] may include: {'tickers': [...], 'days': 30, 'lot': 100}
     - polygon API key comes from POLYGON_API_KEY env var or ctx['secrets']['polygon']
     """
-    params = _resolve_params(ctx)
-    api_key = _resolve_api_key(ctx)
+    params = resolveParameters(ctx)
+    api_key = resolveAPIKey(ctx)
 
     # Fail-safe: if no key, return HOLD zeros
     if not api_key or RESTClient is None:
         tickers = params["tickers"]
         return pd.DataFrame(
-            {"QTY": [0]*len(tickers), "side": ["HOLD"]*len(tickers)},
+            {"QTY": [0]*len(tickers), "side": ["hold"]*len(tickers)},
             index=pd.Index(tickers, name="symbol")
         )
 
     strat = PairsTrading(api_key)
-    return strat.latest_decisions(params["tickers"], params["days"], params["lot"])
+    return strat.latestDecisions(params["tickers"], params["days"], params["lot"])
