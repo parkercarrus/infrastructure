@@ -1,0 +1,1 @@
+from .sizing.kelly import KellySizer
