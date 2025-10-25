@@ -33,5 +33,4 @@ def makeTrade(trade_decision): # camelCase
         )
     return order
 
-print(makeTrade(trade_decision))
 
