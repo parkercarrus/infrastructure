@@ -1,4 +1,4 @@
-import asyncio, json, time, signal, sys, importlib, logging
+import asyncio, json, time, signal, sys, importlib, logging, inspect
 from typing import Any, Dict
 
 try:
@@ -18,22 +18,53 @@ def load_config(path: str) -> dict:
     assert isinstance(cfg.get("strategies"), list), "strategies must be a list"
     return cfg
 
-def import_callable(module_path: str, func_name: str):
+def import_attr(module_path: str, attr_name: str):
     mod = importlib.import_module(module_path)
-    fn = getattr(mod, func_name)
-    if not callable(fn):
-        raise TypeError(f"{module_path}.{func_name} is not callable")
-    return fn
+    if not hasattr(mod, attr_name):
+        raise AttributeError(f"{module_path}.{attr_name} not found")
+    return getattr(mod, attr_name)
 
-async def exec_python(strategy: dict, context: Dict[str, Any]) -> Dict[str, Any]:
-    mod = strategy["executor"]["module"]
-    func = strategy["executor"]["function"]
-    fn = import_callable(mod, func)
-    out = fn(context)
-    print(out)
-    if asyncio.iscoroutine(out):
-        out = await out
-    return {"ok": True, "result": out}
+def resolve_executor_attr(strategy: dict):
+    ex = strategy["executor"]
+    mod = ex["module"]
+    name = ex.get("class") or ex.get("function") or ex.get("attr")
+    if not name:
+        raise KeyError("executor must specify 'class' or 'function'")
+    return import_attr(mod, name)
+
+
+async def exec_python(strategy: dict, context: Dict[str, Any], stop_evt: asyncio.Event) -> Dict[str, Any]:
+    attr = resolve_executor_attr(strategy)
+
+    # Class-based algorithm (preferred)
+    try:
+        from algorithms.base import BaseAlgorithm
+    except Exception:
+        BaseAlgorithm = None
+
+    if inspect.isclass(attr) and BaseAlgorithm and issubclass(attr, BaseAlgorithm):
+        algo = attr(strategy=strategy, stop_evt=stop_evt)  # type: ignore
+        try:
+            await algo.initialize()
+            await algo.before_tick(context)
+            out = await algo.arun(context)
+            await algo.after_tick(context, out)
+            return {"ok": True, "result": out, "meta": getattr(algo, "meta", lambda: {})()}
+        finally:
+            try:
+                await algo.aclose()
+            except Exception:
+                pass
+
+    # Function-style (backward-compatible)
+    if callable(attr):
+        out = attr(context)
+        if asyncio.iscoroutine(out):
+            out = await out
+        return {"ok": True, "result": out}
+
+    raise TypeError("executor attr must be a callable or BaseAlgorithm subclass")
+
 
 async def exec_http(strategy: dict, context: Dict[str, Any]) -> Dict[str, Any]:
     if httpx is None:
@@ -71,7 +102,7 @@ async def strategy_loop(strategy: dict, stop_evt: asyncio.Event):
             }
             etype = strategy["executor"]["type"]
             if etype == "python":
-                res = await exec_python(strategy, context)
+                res = await exec_python(strategy, context, stop_evt)
             elif etype == "http":
                 res = await exec_http(strategy, context)
             else:
