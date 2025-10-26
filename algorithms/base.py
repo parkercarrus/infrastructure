@@ -1,13 +1,10 @@
-import abc
 import asyncio
 import importlib
 import logging
 import os
 from typing import Any, Dict, Optional
 
-
-class BaseAlgorithm(abc.ABC):
-
+class BaseAlgorithm:
     name: str = "base"
     version: str = "0.1.0"
 
@@ -20,7 +17,6 @@ class BaseAlgorithm(abc.ABC):
         self.strategy = strategy or {}
         self.logger = logger or logging.getLogger(f"algo.{self.strategy.get('id', 'unknown')}")
         self.stop_evt = stop_evt or asyncio.Event()
-
 
     async def initialize(self) -> None:
         """Run once before the first tick (e.g., load models, connect DB)."""
@@ -38,9 +34,7 @@ class BaseAlgorithm(abc.ABC):
         """Cleanup hook on shutdown."""
         pass
 
-    # ------------------------------------------------------------------ #
-    # Main execution
-    # ------------------------------------------------------------------ #
+    # Main execution entrypoint
     async def arun(self, context: Dict[str, Any]) -> Any:
         """
         Async entrypoint. Falls back to sync `run()` if not overridden.
@@ -54,9 +48,7 @@ class BaseAlgorithm(abc.ABC):
             return out
         raise NotImplementedError("Subclass must implement `run()` or override `arun()`.")
 
-    # ------------------------------------------------------------------ #
     # Parameter & secret helpers
-    # ------------------------------------------------------------------ #
     def merged_params(
         self,
         defaults: Optional[Dict[str, Any]] = None,
@@ -65,20 +57,18 @@ class BaseAlgorithm(abc.ABC):
         """Merge defaults < strategy.params < context.params."""
         defaults = defaults or {}
         context = context or {}
-        p_ctx = (context.get("params") or {})
-        p_strat = (self.strategy.get("params") or {})
+        p_ctx = context.get("params") or {}
+        p_strat = self.strategy.get("params") or {}
         return {**defaults, **p_strat, **p_ctx}
 
     def get_param(self, key: str, default: Any = None, context: Optional[Dict[str, Any]] = None) -> Any:
         return self.merged_params({key: default}, context).get(key, default)
 
-    def get_secret(
-        self, key: str, default: Any = None, context: Optional[Dict[str, Any]] = None
-    ) -> Any:
+    def get_secret(self, key: str, default: Any = None, context: Optional[Dict[str, Any]] = None) -> Any:
         """Resolve secret from context.secrets > strategy.secrets."""
         context = context or {}
-        s_ctx = (context.get("secrets") or {})
-        s_strat = (self.strategy.get("secrets") or {})
+        s_ctx = context.get("secrets") or {}
+        s_strat = self.strategy.get("secrets") or {}
         return s_ctx.get(key, s_strat.get(key, default))
 
     def env_or_secret(
@@ -93,7 +83,7 @@ class BaseAlgorithm(abc.ABC):
         if val:
             return val
         return self.get_secret(secret_key or env_var.lower(), default, context)
-    
+
     def require_import(self, module_name: str, install_hint: Optional[str] = None):
         """Import a dependency or raise with a clear hint."""
         try:

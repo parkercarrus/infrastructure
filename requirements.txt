@@ -4,3 +4,4 @@ fastapi
 polygon
 httpx
 asyncio
+yfinance
