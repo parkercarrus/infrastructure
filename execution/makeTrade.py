@@ -17,7 +17,7 @@ ctx = {
         }
 trade_decision = runStrategy(ctx)
 
-def makeTrade(trade_decision): # camelCase
+def makeTrade(trade_decision):
     order = {}
     for symbol, row in trade_decision.iterrows():
         qty = row["QTY"]
