@@ -1,6 +1,5 @@
 from typing import List, Dict, Any
 import pandas as pd
-
 from algorithms.base import BaseAlgorithm
 
 try:
