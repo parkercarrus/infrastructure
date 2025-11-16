@@ -1,19 +1,19 @@
 import duckdb
 import pandas as pd
+from typing import Tuple, Any
 
 # import stats from DuckDB
-def get_data() -> dict[str: pd.DataFrame]:
-    conn = duckdb.connect()
 
-    try:
-        result = conn.execute("SELECT * FROM your_existing_table").fetchall() # replace with some fetching of DuckDB information
-        for row in result:
-            print(row)
+def get_data() -> Tuple[pd.DataFrame, pd.DataFrame]:
+    con = duckdb.connect("algory.duckdb")
 
-    except Exception as e:
-        print(f"An error occurred: {e}")
+    portfolio = con.execute("SELECT * FROM portfolio_history ORDER BY timestamp").df()
+    trades = con.execute("SELECT * FROM trades ORDER BY timestamp").df()
 
-    finally:
-        conn.close()
+    con.close()
     
-    return dict(result) # return a dictionary of dataframes, with keys for the type of data we want to pull
+    return portfolio, trades
+
+def compute_portfolio_metrics(portfolio_df: pd.DataFrame) -> dict[str: Any]:
+    
+    return

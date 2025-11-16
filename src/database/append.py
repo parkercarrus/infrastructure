@@ -27,7 +27,6 @@ def append_trade(trade: Trade, db_path: str = "algory.duckdb") -> None:
             [trade_id, timestamp, strategy, sym, side, float(qty), price]
         )
     df = con.execute("SELECT * FROM trades LIMIT 5").df()
-    print(df)
     con.close()
 
 def append_portfolios(db_path: str = "algory.duckdb") -> None:
@@ -47,6 +46,4 @@ def append_portfolios(db_path: str = "algory.duckdb") -> None:
         """,
         [datetime.now(), portfolio_value, 100, len(grouped)]
     )
-    df = con.execute("SELECT * FROM portfolio_history ORDER BY timestamp DESC LIMIT 1").df()
-    print(df.to_string(index=False))
     con.close()

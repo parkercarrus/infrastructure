@@ -36,7 +36,9 @@ def main_loop(strategy_dict: dict[str, BaseAlgorithm], strategy_frequencies: dic
     for strategy in strategy_dict.values():
         if is_strategy_time(strategy, strategy):
             trade_decision = strategy.run() # current trade decision
+            print(trade_decision)
             res = execute(trade_decision)
+
             if abs(max(trade_decision.qty)) > 0:
                 append.append_trade(trade_decision)
     if is_bookkeeping_time():        
