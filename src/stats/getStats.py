@@ -17,5 +17,3 @@ def get_data() -> dict[str: pd.DataFrame]:
         conn.close()
     
     return dict(result) # return a dictionary of dataframes, with keys for the type of data we want to pull
-
-

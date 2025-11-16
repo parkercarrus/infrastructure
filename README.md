@@ -9,5 +9,6 @@
 2. **Run the Controller**
 
     ```bash
+    cd src
     python -m controller.runController
     ```
