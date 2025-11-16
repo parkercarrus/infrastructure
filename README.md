@@ -28,5 +28,6 @@
     cd frontend
     npm run dev
     ```
-
+    
+Run all of these in separate terminals
 Go to localhost:3000 to view frontend
