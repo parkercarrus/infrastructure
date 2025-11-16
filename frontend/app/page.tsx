@@ -61,12 +61,17 @@ export default function Home() {
               }`}
             />
           </h1>
+          <h2> The Premier Undergraduate Multi-Strategy Investment Fund at Emory University </h2>
 
           {/* CTA buttons */}
           <div className="flex flex-col items-center justify-center gap-2 pt-2">
             <div className="mb-4">
               <Link href={{ pathname: "/dashboard", query: { play: false } }}>
-                <Button className="rounded-xl px-5 py-2 border border-blue">View Portfolio</Button>
+              <Button
+                className="rounded-xl px-5 py-2 border border-blue hover:bg-blue-100 hover:text-blue-900 transition-colors"
+              >
+                View Portfolio
+              </Button>
               </Link>
               <span className="inline-block w-2" />
             </div>

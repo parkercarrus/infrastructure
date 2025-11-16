@@ -1,6 +1,7 @@
 # bff = Backend for Frontend
 import duckdb
 import pandas as pd
+from stats import getStats
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -27,3 +28,10 @@ def portfolio():
     con = duckdb.connect("algory.duckdb")
     df = con.execute("SELECT * FROM portfolio_history ORDER BY timestamp").df()
     return df.to_dict(orient="records")
+
+@app.get("/statistics")
+def statistics():
+    portfolio_df, trades_df = getStats.get_data()
+    portfolio_stats = getStats.compute_portfolio_metrics(portfolio_df)
+
+    return portfolio_stats

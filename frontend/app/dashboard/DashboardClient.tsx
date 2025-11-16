@@ -114,7 +114,7 @@ useEffect(() => {
       <div
         className="border border-black rounded-lg p-4 flex justify-between items-end mb-12 bg-background"
       >
-        <h1 className="text-3xl font-bold tracking-tight">Algorithmic Portfolio</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Algory Capital Algorithmic Portfolio</h1>
         <div>
           <Link href="/" className="hover:underline dark:text-white mr-4">
             Home
