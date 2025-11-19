@@ -1,17 +1,24 @@
 ## Setup Instructions
 
-1. **Install Dependencies**
+1. **Initialize Frontend**
 
     ```bash
-    pip install -r requirements.txt
     cd frontend
-    npm install
+    rm -rf node_modules && rm -rf package-lock.json && rm -rf .next && npm install
+    npm run dev
     ```
 
-2. **Run the Controller**
+2. **Initialize and Seed (for testing) Database**
 
     ```bash
     cd src
+    python -m database.init_duckdb
+    python -m database.seed_db
+    ```
+
+3. **Run the Controller**
+
+    ```bash
     python -m controller.runController
     ```
 
@@ -20,13 +27,6 @@
     ```bash
     cd src
     uvicorn bff:app --reload
-    ```
-
-4. **Run the Frontend**
-
-    ```bash
-    cd frontend
-    npm run dev
     ```
     
 Run all of these in separate terminals

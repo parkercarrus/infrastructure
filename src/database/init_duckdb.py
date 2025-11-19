@@ -45,3 +45,5 @@ def initialize_duckdb(db_path: str = "algory.duckdb") -> int:
     print(f"DuckDB initialized successfully at '{db_path}'")
     return 100
 
+if __name__ == "__main__":
+    initialize_duckdb()

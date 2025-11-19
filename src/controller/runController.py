@@ -6,9 +6,6 @@ from database import init_duckdb, append
 
 def startup() -> tuple[dict[str, BaseAlgorithm], dict[str, int]]:
 
-    # Initialize DuckDB Database Schema 
-    init_duckdb.initialize_duckdb('algory.duckdb')
-
     # Initialize Strategy Tracking
     dummy_strategy = dummyTest.DummyTest('dummy_strategy', 1)
     strategy_dict = { "dummy_strategy": dummy_strategy }
