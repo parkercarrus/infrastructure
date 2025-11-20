@@ -32,6 +32,7 @@ def portfolio():
 @app.get("/statistics")
 def statistics():
     portfolio_df, trades_df = getStats.get_data()
+    print(portfolio_df)
     portfolio_stats = getStats.compute_portfolio_metrics(portfolio_df)
 
     return portfolio_stats

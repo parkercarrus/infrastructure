@@ -14,7 +14,7 @@ def get_data() -> Tuple[pd.DataFrame, pd.DataFrame]:
     
     return portfolio, trades
 
-def compute_portfolio_metrics(portfolio_df: pd.DataFrame) -> dict[str: Any]:
+def compute_portfolio_metrics(portfolio_df: pd.DataFrame) -> dict[str: Any]:   
     need_to_do_something_with_var = portfolio_df
     return {
         "sharpe": 1.2,
