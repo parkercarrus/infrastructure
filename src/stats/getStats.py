@@ -6,7 +6,7 @@ import yfinance as yf
 
 # import stats from DuckDB
 
-def get_data() -> Tuple[pd.DataFrame, pd.DataFrame]:
+def get_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     con = duckdb.connect("algory.duckdb")
 
     portfolio = con.execute("SELECT * FROM portfolio_history ORDER BY timestamp").df()
@@ -23,7 +23,7 @@ def compute_portfolio_metrics(portfolio_df: pd.DataFrame) -> dict[str, Any]:
     df = portfolio_df.sort_values("timestamp").copy()
 
     # ---- Download benchmark & compute market returns ----
-    spy = yf.download("SPY", start="2020-01-01", progress=False)
+    spy = yf.download("SPY", start="2020-01-01", progress=False, auto_adjust=True)
     spy["returns"] = spy["Close"].pct_change().dropna()
     market_returns = spy["returns"]
 
@@ -121,7 +121,7 @@ def compute_portfolio_metrics(portfolio_df: pd.DataFrame) -> dict[str, Any]:
 
     return {
         "PnL": float(pnl_pct),
-        "PnL_abs": float(pnl_abs),
+        "Absolute PnL": float(pnl_abs),
         "CAGR": float(cagr),
         "Max Drawdown": float(max_drawdown),
         "Sharpe Ratio": float(sharpe),
@@ -143,7 +143,7 @@ def compute_strategy_metrics(strategy_df: pd.DataFrame) -> dict[str, dict[str, A
     df_all["timestamp"] = pd.to_datetime(df_all["timestamp"])
 
     # ---- Download benchmark & compute market returns ----
-    spy = yf.download("SPY", start="2020-01-01", progress=False)
+    spy = yf.download("SPY", start="2020-01-01", progress=False, auto_adjust=True)
     spy["returns"] = spy["Close"].pct_change().dropna()
     market_returns = spy["returns"]
 
@@ -257,7 +257,7 @@ def compute_strategy_metrics(strategy_df: pd.DataFrame) -> dict[str, dict[str, A
 
         results[strat] = {
             "PnL": float(pnl_pct),
-            "PnL_abs": float(pnl_abs),
+            "Absolute PnL": float(pnl_abs),
             "CAGR": float(cagr),
             "Max Drawdown": float(max_drawdown),
             "Sharpe Ratio": float(sharpe),
