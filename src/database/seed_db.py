@@ -20,6 +20,7 @@ import duckdb
 import random
 import datetime as dt
 import numpy as np
+from pathlib import Path
 
 def generate_portfolio_history_rows(
     start: dt.datetime,
@@ -56,8 +57,9 @@ def generate_portfolio_history_rows(
         ts += dt.timedelta(minutes=dt_minutes)
 
 
-def insert_seed_portfolio_history(db_path="algory.duckdb"):
-    con = duckdb.connect(db_path)
+def insert_seed_portfolio_history():
+    DB_PATH = Path(__file__).resolve().parents[1] / "algory.duckdb"
+    con = duckdb.connect(str(DB_PATH))
 
     rows = list(
         generate_portfolio_history_rows(
@@ -96,12 +98,119 @@ def insert_seed_portfolio_history(db_path="algory.duckdb"):
 if __name__ == "__main__":
     insert_seed_portfolio_history()
 
+# %%
+import duckdb
+import random
+import datetime as dt
+import numpy as np
+from pathlib import Path
+
+STRATEGIES = ["momentum", "mean_reversion", "pairs", "cluster_v2"]
+
+def generate_strategy_history_rows(
+    start: dt.datetime,
+    strategies = STRATEGIES,
+    periods: int = 500,
+    dt_minutes: int = 5,
+    start_value: float = 100_000.0,
+    cash_ratio_range=(0.05, 0.30),
+    pos_range=(3, 25),
+    vol=0.002,
+):
+    # one independent GBM path per strategy
+    values = {
+        strat: start_value * (1 + np.random.normal(0, 0.05))  # slight initial dispersion
+        for strat in strategies
+    }
+
+    ts = start
+
+    for _ in range(periods):
+        for strat in strategies:
+            # GBM-like update
+            drift = 0.0001
+            shock = np.random.normal(0, vol)
+            values[strat] = values[strat] * (1 + drift + shock)
+
+            strategy_value = float(values[strat])
+
+            # cash as % of value
+            cash_ratio = random.uniform(*cash_ratio_range)
+            cash = strategy_value * cash_ratio
+
+            # integer positions
+            n_positions = random.randint(*pos_range)
+
+            # for now, just set exposure = strategy_value (fully invested, conceptually)
+            exposure = strategy_value
+
+            yield {
+                "timestamp": ts,
+                "strategy": strat,
+                "strategy_value": strategy_value,
+                "cash": float(cash),
+                "exposure": float(exposure),
+                "n_positions": n_positions,
+            }
+
+        ts += dt.timedelta(minutes=dt_minutes)
+
+
+def insert_seed_strategy_history():
+    DB_PATH = Path(__file__).resolve().parents[1] / "algory.duckdb"
+    con = duckdb.connect(str(DB_PATH))
+
+    rows = list(
+        generate_strategy_history_rows(
+            start=dt.datetime.now() - dt.timedelta(days=5),
+            strategies=STRATEGIES,
+            periods=500,
+            dt_minutes=15,
+            start_value=100_000.0,
+            cash_ratio_range=(0.10, 0.35),
+            pos_range=(3, 40),
+            vol=0.0015,
+        )
+    )
+
+    timestamps = [r["timestamp"] for r in rows]
+    strategies = [r["strategy"] for r in rows]
+    values = [r["strategy_value"] for r in rows]
+    cashes = [r["cash"] for r in rows]
+    exposures = [r["exposure"] for r in rows]
+    npos = [r["n_positions"] for r in rows]
+
+    con.execute(
+        """
+        INSERT INTO strategy_history
+            (timestamp, strategy, strategy_value, cash, exposure, n_positions)
+        SELECT * FROM (
+            SELECT
+                unnest(?::TIMESTAMP[]) AS ts,
+                unnest(?::TEXT[])      AS strategy,
+                unnest(?::DOUBLE[])    AS sv,
+                unnest(?::DOUBLE[])    AS cash,
+                unnest(?::DOUBLE[])    AS exposure,
+                unnest(?::INT[])       AS npos
+        )
+        """,
+        [timestamps, strategies, values, cashes, exposures, npos],
+    )
+
+    print(f"Inserted {len(rows)} strategy_history rows.")
+    con.close()
+
+if __name__ == "__main__":
+    insert_seed_strategy_history()
+
+
 
 # %%
 import duckdb
 import random
 import datetime as dt
 import numpy as np
+from pathlib import Path
 
 STRATEGIES = ["momentum", "mean_reversion", "pairs", "cluster_v2"]
 SYMBOLS = ["AAPL", "MSFT", "AMZN", "GOOG", "META", "NVDA", "TSLA", "JPM", "XOM", "KO"]
@@ -149,8 +258,9 @@ def generate_trades(
         t += dt.timedelta(seconds=dt_seconds)
 
 
-def insert_seed_trades(db_path="algory.duckdb"):
-    con = duckdb.connect(db_path)
+def insert_seed_trades():
+    DB_PATH = Path(__file__).resolve().parents[1] / "algory.duckdb"
+    con = duckdb.connect(str(DB_PATH))
 
     rows = list(
         generate_trades(
@@ -192,4 +302,4 @@ if __name__ == "__main__":
     insert_seed_trades()
 
 
-
+# %%

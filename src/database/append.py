@@ -47,3 +47,27 @@ def append_portfolios(db_path: str = "algory.duckdb") -> None:
         [datetime.now(), portfolio_value, 100, len(grouped)]
     )
     con.close()
+
+def append_strategy_portfolios(db_path: str = "algory.duckdb") -> None:
+    con = duckdb.connect(db_path)
+
+    df = con.execute("SELECT * FROM trades ORDER BY timestamp").df()
+    grouped = df.groupby(by=['strategy','symbol']).sum(numeric_only=True)
+    symbols = grouped.index.get_level_values("symbol").unique()
+
+    random_prices = pd.Series(np.random.uniform(90, 110, size=len(symbols)),index=symbols)
+
+    for strat in grouped.index.get_level_values("strategy").unique():
+        
+        strat_positions = grouped.loc[strat]
+        strat_value = (strat_positions["quantity"] * random_prices[strat_positions.index]).sum()
+    
+        con.execute(
+            """
+            INSERT INTO strategy_history
+                (timestamp, strategy, strategy_value, cash, exposure, n_positions)
+            VALUES (?, ?, ?, ?, ?, ?);
+            """,
+            [datetime.now(), strat, float(strat_value), 100, float(strat_value), len(strat_positions)]
+        )
+    con.close()

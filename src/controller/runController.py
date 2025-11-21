@@ -40,6 +40,7 @@ def main_loop(strategy_dict: dict[str, BaseAlgorithm], strategy_frequencies: dic
                 append.append_trade(trade_decision)
     if is_bookkeeping_time():        
         append.append_portfolios()
+        append.append_strategy_portfolios()
 
 
 
