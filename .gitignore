@@ -10,7 +10,6 @@ dist/
 .eggs/
 
 # Virtual Environment
-.env
 .venv
 env/
 venv/
