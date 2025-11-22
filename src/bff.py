@@ -34,8 +34,7 @@ def statistics():
     portfolio_df, strategy_df, trades_df = getStats.get_data()
     print(portfolio_df)
     portfolio_stats = getStats.compute_portfolio_metrics(portfolio_df)
-    strategy_stats = getStats.compute_portfolio_metrics(portfolio_df)
-
+    
     return portfolio_stats
 
 @app.get("/strategy_statistics")
