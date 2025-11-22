@@ -1,13 +1,15 @@
 import duckdb
+from pathlib import Path
 import pandas as pd
 from typing import Tuple, Any
 import numpy as np
 import yfinance as yf
 
 # import stats from DuckDB
+DB_PATH = Path(__file__).resolve().parents[1] / "algory.duckdb"
 
 def get_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    con = duckdb.connect("algory.duckdb")
+    con = duckdb.connect(str(DB_PATH))
 
     portfolio = con.execute("SELECT * FROM portfolio_history ORDER BY timestamp").df()
     strategy = con.execute("SELECT * FROM strategy_history ORDER BY timestamp").df()
@@ -162,7 +164,7 @@ def compute_strategy_metrics(strategy_df: pd.DataFrame) -> dict[str, dict[str, A
 
         if returns.empty:
             results[strat] = {k: np.nan for k in [
-                "PnL", "PnL_abs", "CAGR", "Max Drawdown", "Sharpe Ratio",
+                "PnL", "Absolute PnL", "CAGR", "Max Drawdown", "Sharpe Ratio",
                 "Sortino Ratio", "Volatility", "Value at Risk (95%)",
                 "Beta to Market", "Kurtosis", "Average Trade Return",
                 "Median Trade Return", "Win/Loss Ratio",

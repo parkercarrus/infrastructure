@@ -1,9 +1,11 @@
 import duckdb
 from pathlib import Path
 
-def initialize_duckdb(db_path: str = "algory.duckdb") -> int:
-    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-    con = duckdb.connect(db_path)
+def initialize_duckdb() -> int:
+    DB_PATH = Path(__file__).resolve().parents[1] / "algory.duckdb"
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    con = duckdb.connect(str(DB_PATH))
 
     con.execute("""
     CREATE TABLE IF NOT EXISTS trades (
@@ -13,7 +15,7 @@ def initialize_duckdb(db_path: str = "algory.duckdb") -> int:
         symbol TEXT,
         side TEXT,            
         quantity DOUBLE,
-        price DOUBLE,
+        price DOUBLE
     );
     """)
 
@@ -33,7 +35,7 @@ def initialize_duckdb(db_path: str = "algory.duckdb") -> int:
         strategy_value DOUBLE,
         cash DOUBLE,
         exposure DOUBLE,
-        n_positions INT,
+        n_positions INT
     );
     """)
 
@@ -42,7 +44,7 @@ def initialize_duckdb(db_path: str = "algory.duckdb") -> int:
     con.execute("CREATE INDEX IF NOT EXISTS idx_portfolio_ts ON portfolio_history (timestamp);")
 
     con.close()
-    print(f"DuckDB initialized successfully at '{db_path}'")
+    print(f"DuckDB initialized successfully at '{DB_PATH}'")
     return 100
 
 if __name__ == "__main__":

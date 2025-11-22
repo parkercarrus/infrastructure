@@ -1,22 +1,27 @@
 import duckdb
 import numpy as np
 import pandas as pd
-from typing import List
 from datetime import datetime
-from algorithms.base import Trade
+from ..algorithms.base import Trade
 
 
 def append_trade(trade: Trade, db_path: str = "algory.duckdb") -> None:
     con = duckdb.connect(db_path)
 
-    # Unpack Trade
-    strategy = trade.strategy_id
     timestamp = datetime.fromtimestamp(trade.timestamp)
 
-    for sym, qty in zip(trade.symbol, trade.qty):
+    legs = [
+        (sym, qty, price)
+        for sym, qty, price in zip(trade.symbol, trade.qty, trade.price)
+        if abs(qty) > 1e-8
+    ]
+    if not legs:
+        con.close()
+        return
+
+    for sym, qty, price in legs:
+
         side = "BUY" if qty > 0 else "SELL"
-        price = 100
-        trade_id = int(timestamp.timestamp() * 1e6)
 
         con.execute(
             """
@@ -24,19 +29,28 @@ def append_trade(trade: Trade, db_path: str = "algory.duckdb") -> None:
                 (trade_id, timestamp, strategy, symbol, side, quantity, price)
             VALUES (?, ?, ?, ?, ?, ?, ?);
             """,
-            [trade_id, timestamp, strategy, sym, side, float(qty), price]
+            [trade.trade_id, timestamp, trade.strategy_id, sym, side, float(qty), float(price)]
         )
-    df = con.execute("SELECT * FROM trades LIMIT 5").df()
     con.close()
 
-def append_portfolios(db_path: str = "algory.duckdb") -> None:
+def append_portfolios(timestamp: datetime, prices: dict[str, float], db_path: str = "algory.duckdb") -> None:
     con = duckdb.connect(db_path)
 
-    df = con.execute("SELECT * FROM trades ORDER BY timestamp").df()
-    grouped = df.groupby(by='symbol').sum(numeric_only=True)
+    df = con.execute("SELECT symbol, quantity FROM trades WHERE timestamp <= ? ORDER BY timestamp",[timestamp],).df()
+    
+    if df.empty:
+        con.close()
+        return
 
-    random_prices = pd.Series(np.random.uniform(90, 110, size=len(grouped)), index=grouped.index)
-    portfolio_value = (grouped.quantity * random_prices).sum()
+    grouped = df.groupby(by='symbol').sum(numeric_only=True)
+    qty = grouped["quantity"]
+
+    price_series = pd.Series(prices)
+
+    qty_aligned, price_aligned = qty.align(price_series, join="inner")
+
+    portfolio_value = (qty_aligned * price_aligned).sum()
+    total_positions = int((qty_aligned != 0).sum())
     
     con.execute(
         """
@@ -44,23 +58,34 @@ def append_portfolios(db_path: str = "algory.duckdb") -> None:
             (timestamp, total_value, total_cash, total_positions)
         VALUES (?, ?, ?, ?);
         """,
-        [datetime.now(), portfolio_value, 100, len(grouped)]
+        [timestamp, portfolio_value, 100.0, total_positions],
     )
     con.close()
 
-def append_strategy_portfolios(db_path: str = "algory.duckdb") -> None:
+def append_strategy_portfolios(timestamp: datetime, prices: dict[str, float], db_path: str = "algory.duckdb") -> None:
     con = duckdb.connect(db_path)
 
-    df = con.execute("SELECT * FROM trades ORDER BY timestamp").df()
-    grouped = df.groupby(by=['strategy','symbol']).sum(numeric_only=True)
-    symbols = grouped.index.get_level_values("symbol").unique()
+    df = con.execute("SELECT strategy, symbol, quantity FROM trades WHERE timestamp <= ? ORDER BY timestamp",[timestamp],).df()
 
-    random_prices = pd.Series(np.random.uniform(90, 110, size=len(symbols)),index=symbols)
+    if df.empty:
+        con.close()
+        return
+    
+    grouped = df.groupby(by=['strategy','symbol']).sum(numeric_only=True)
 
     for strat in grouped.index.get_level_values("strategy").unique():
         
-        strat_positions = grouped.loc[strat]
-        strat_value = (strat_positions["quantity"] * random_prices[strat_positions.index]).sum()
+        strat_positions = grouped.xs(strat, level="strategy")
+        qty = strat_positions["quantity"]
+
+        price_series = pd.Series(prices)
+
+        qty_aligned, price_aligned = qty.align(price_series, join="inner")
+        if qty_aligned.empty:
+            continue
+
+        strat_value = float((qty_aligned * price_aligned).sum())
+        n_positions = int((qty_aligned != 0).sum())
     
         con.execute(
             """
@@ -68,6 +93,6 @@ def append_strategy_portfolios(db_path: str = "algory.duckdb") -> None:
                 (timestamp, strategy, strategy_value, cash, exposure, n_positions)
             VALUES (?, ?, ?, ?, ?, ?);
             """,
-            [datetime.now(), strat, float(strat_value), 100, float(strat_value), len(strat_positions)]
+            [timestamp, strat, strat_value, 100.0, strat_value, n_positions],
         )
     con.close()
