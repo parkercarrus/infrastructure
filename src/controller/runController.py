@@ -2,7 +2,9 @@ import time
 from algorithms.base import Trade, BaseAlgorithm
 from algorithms import dummyTest
 import numpy as np
-from database import init_duckdb, append
+from database import append
+from execution.execute_alpaca import make_trade
+import duckdb
 
 def startup() -> tuple[dict[str, BaseAlgorithm], dict[str, int]]:
 
@@ -51,3 +53,6 @@ def main():
         time.sleep(0.01)
 
 main()
+
+
+

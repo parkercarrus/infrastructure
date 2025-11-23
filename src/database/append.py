@@ -36,7 +36,7 @@ def append_trade(trade: Trade, db_path: str = "algory.duckdb") -> None:
 def append_portfolios(timestamp: datetime, prices: dict[str, float], db_path: str = "algory.duckdb") -> None:
     con = duckdb.connect(db_path)
 
-    df = con.execute("SELECT symbol, quantity FROM trades WHERE timestamp <= ? ORDER BY timestamp",[timestamp],).df()
+    df = con.execute("SELECT symbol, quantity, price FROM trades WHERE timestamp <= ? ORDER BY timestamp",[timestamp],).df()
     
     if df.empty:
         con.close()
@@ -49,8 +49,14 @@ def append_portfolios(timestamp: datetime, prices: dict[str, float], db_path: st
 
     qty_aligned, price_aligned = qty.align(price_series, join="inner")
 
-    portfolio_value = (qty_aligned * price_aligned).sum()
+    positions_value = (qty_aligned * price_aligned).sum()
     total_positions = int((qty_aligned != 0).sum())
+
+    STARTING_CASH = 100_000.0
+    cash_flow = (df["quantity"]*df["price"]).sum()
+    cash = STARTING_CASH - cash_flow
+
+    portfolio_value = positions_value + cash
     
     con.execute(
         """
@@ -58,34 +64,43 @@ def append_portfolios(timestamp: datetime, prices: dict[str, float], db_path: st
             (timestamp, total_value, total_cash, total_positions)
         VALUES (?, ?, ?, ?);
         """,
-        [timestamp, portfolio_value, 100.0, total_positions],
+        [timestamp, float(portfolio_value), float(cash), total_positions],
     )
     con.close()
 
 def append_strategy_portfolios(timestamp: datetime, prices: dict[str, float], db_path: str = "algory.duckdb") -> None:
     con = duckdb.connect(db_path)
 
-    df = con.execute("SELECT strategy, symbol, quantity FROM trades WHERE timestamp <= ? ORDER BY timestamp",[timestamp],).df()
+    df = con.execute("SELECT strategy, symbol, quantity, price FROM trades WHERE timestamp <= ? ORDER BY timestamp",[timestamp],).df()
 
     if df.empty:
         con.close()
         return
     
-    grouped = df.groupby(by=['strategy','symbol']).sum(numeric_only=True)
+    price_series = pd.Series(prices)
+    STARTING_CASH = {
+    "momentum": 25_000,
+    "mean_reversion": 25_000,
+    "pairs": 25_000,
+    "cluster_v2": 25_000,
+    }
 
-    for strat in grouped.index.get_level_values("strategy").unique():
+    for strat, strat_df in df.groupby("strategy"):
         
-        strat_positions = grouped.xs(strat, level="strategy")
-        qty = strat_positions["quantity"]
 
-        price_series = pd.Series(prices)
-
-        qty_aligned, price_aligned = qty.align(price_series, join="inner")
+        positions = strat_df.groupby("symbol")["quantity"].sum()
+        qty_aligned, price_aligned = positions.align(price_series, join="inner")
         if qty_aligned.empty:
             continue
 
-        strat_value = float((qty_aligned * price_aligned).sum())
+        positions_value = float((qty_aligned * price_aligned).sum())
         n_positions = int((qty_aligned != 0).sum())
+
+        cash_flow = (strat_df["quantity"] * strat_df["price"]).sum()
+        starting_cash = STARTING_CASH[strat]
+        cash = starting_cash - cash_flow
+
+        strat_value = positions_value + cash
     
         con.execute(
             """
@@ -93,6 +108,6 @@ def append_strategy_portfolios(timestamp: datetime, prices: dict[str, float], db
                 (timestamp, strategy, strategy_value, cash, exposure, n_positions)
             VALUES (?, ?, ?, ?, ?, ?);
             """,
-            [timestamp, strat, strat_value, 100.0, strat_value, n_positions],
+            [timestamp, strat, strat_value, float(cash), positions_value, n_positions],
         )
     con.close()

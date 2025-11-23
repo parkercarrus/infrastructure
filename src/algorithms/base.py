@@ -1,21 +1,16 @@
-from typing import List, Optional
+from typing import List, Dict
+from datetime import datetime
+from src.controller.price_generator import PriceSnapshot
 
 class Trade:
-    def __init__(self, strategy_id: str, timestamp: float, qty: List[float], symbol: List[str], price: Optional[List[float]] = None, trade_id: int | None=None,):
+    def __init__(self, strategy_id: str, timestamp: float, qty: List[float], symbol: List[str], price: List[float] | None = None, trade_id: int | None=None):
         self.strategy_id =  strategy_id
-        self.timestamp = timestamp
+        self.timestamp = float(timestamp)
         self.qty = qty
         self.symbol = symbol
-
-        if price is None:
-            self.price = [float('nan')] * len(symbol)
-        else:
-            self.price = price
+        self.price = price or [float("nan")] * len(symbol)
+        self.trade_id = trade_id or int(timestamp * 1_000_000)
         
-        if trade_id is None:
-            self.trade_id = int(timestamp * 1_000_000)   # microsecond-based
-        else:
-            self.trade_id = trade_id
 
     def __str__(self) -> str:
         return (
@@ -31,5 +26,11 @@ class BaseAlgorithm:
         self.frequency = frequency
         self.last_exec = 0.0
 
-    def run(self) -> Trade:
+    def run(
+            self,
+            timestamp: datetime,
+            prices: Dict[str, float],
+            positions: Dict[str, float],
+            history: List[PriceSnapshot]
+    ) -> Trade:
         raise NotImplementedError("Algorithm must implement run()")
