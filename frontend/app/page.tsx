@@ -64,39 +64,30 @@ export default function Home() {
           <h2> The Premier Undergraduate Multi-Strategy Investment Fund at Emory University </h2>
 
           {/* CTA buttons */}
-          <div className="flex flex-col items-center justify-center gap-2 pt-2">
-            <div className="mb-4">
-              <Link href={{ pathname: "/dashboard", query: { play: false } }}>
+          <div className="flex flex-col items-center justify-center gap-4 pt-4 w-full max-w-xs mx-auto">
+
+            <Link href={{ pathname: "/dashboard", query: { play: false } }} className="w-full">
               <Button
-                className="rounded-xl px-5 py-2 border border-blue hover:bg-blue-100 hover:text-blue-900 transition-colors"
+                className="w-full rounded-xl py-2 border border-blue hover:bg-blue-100 hover:text-blue-900 transition-colors"
               >
-                View Portfolio
+                View Dashboard
               </Button>
-              </Link>
-              <span className="inline-block w-2" />
-            </div>
-            <div className="flex items-center justify-center gap-3">
-              <Link
-                href="/about"
-                target="_blank"
-                rel="noopener noreferrer"
+            </Link>
+
+            <Link
+              href="https://www.algorycapital.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full"
+            >
+              <Button
+                variant="ghost"
+                className="w-full rounded-xl py-2 border border-white"
               >
-                <Button
-                  variant="ghost"
-                  className="rounded-xl px-5 py-2 border border-white"
-                >
-                About
-                </Button>
-              </Link>
-              <Link href="https://www.algorycapital.com">
-                <Button
-                  variant="ghost"
-                  className="rounded-xl px-5 py-2 border border-white"
-                >
-                  Algory
-                </Button>
-              </Link>
-            </div>
+                Algory Capital
+              </Button>
+            </Link>
+
           </div>
         </div>
       </div>

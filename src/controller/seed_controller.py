@@ -134,7 +134,7 @@ def main() -> None:
     strategies, price_gen = startup()
     print(f"Initialized {len(strategies)} strategies, initialized price generator, and cleared DB.")
 
-    for i in range(200):
+    for i in range(1000):
         main_loop(strategies, price_gen, DB_PATH)
         time.sleep(0.1)
         if (i) % 20 == 0:

@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: { ignoreDuringBuilds: true },
-  output: 'standalone',
+  serverExternalPackages: ["duckdb", "@mapbox/node-pre-gyp"],
 };
 
 module.exports = nextConfig;
