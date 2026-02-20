@@ -111,3 +111,111 @@ def append_strategy_portfolios(timestamp: datetime, prices: dict[str, float], db
             [timestamp, strat, strat_value, float(cash), positions_value, n_positions],
         )
     con.close()
+
+def append_portfolio_metrics(
+    timestamp: datetime,
+    metrics: dict[str, float],
+    db_path: str = "algory.duckdb",
+) -> None:
+    """
+    metrics is the dict returned by compute_portfolio_metrics()
+    """
+    con = duckdb.connect(db_path)
+    try:
+        con.execute(
+            """
+            INSERT INTO portfolio_metrics (
+                timestamp,
+                "PnL",
+                "Absolute PnL",
+                "CAGR",
+                "Max Drawdown",
+                "Sharpe Ratio",
+                "Sortino Ratio",
+                "Volatility",
+                "Value at Risk (95%)",
+                "Beta to Market",
+                "Kurtosis",
+                "Average Trade Return",
+                "Median Trade Return",
+                "Win/Loss Ratio",
+                "Average Win / Average Loss"
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+            """,
+            [
+                timestamp,
+                float(metrics.get("PnL", np.nan)),
+                float(metrics.get("Absolute PnL", np.nan)),
+                float(metrics.get("CAGR", np.nan)),
+                float(metrics.get("Max Drawdown", np.nan)),
+                float(metrics.get("Sharpe Ratio", np.nan)),
+                float(metrics.get("Sortino Ratio", np.nan)),
+                float(metrics.get("Volatility", np.nan)),
+                float(metrics.get("Value at Risk (95%)", np.nan)),
+                float(metrics.get("Beta to Market", np.nan)),
+                float(metrics.get("Kurtosis", np.nan)),
+                float(metrics.get("Average Trade Return", np.nan)),
+                float(metrics.get("Median Trade Return", np.nan)),
+                float(metrics.get("Win/Loss Ratio", np.nan)),
+                float(metrics.get("Average Win / Average Loss", np.nan)),
+            ],
+        )
+    finally:
+        con.close()
+
+
+def append_strategy_metrics(
+    timestamp: datetime,
+    metrics_by_strategy: dict[str, dict[str, float]],
+    db_path: str = "algory.duckdb",
+) -> None:
+    """
+    metrics_by_strategy is the dict returned by compute_strategy_metrics()
+    """
+    con = duckdb.connect(db_path)
+    try:
+        for strategy, m in metrics_by_strategy.items():
+            con.execute(
+                """
+                INSERT INTO strategy_metrics (
+                    timestamp,
+                    strategy,
+                    "PnL",
+                    "Absolute PnL",
+                    "CAGR",
+                    "Max Drawdown",
+                    "Sharpe Ratio",
+                    "Sortino Ratio",
+                    "Volatility",
+                    "Value at Risk (95%)",
+                    "Beta to Market",
+                    "Kurtosis",
+                    "Average Trade Return",
+                    "Median Trade Return",
+                    "Win/Loss Ratio",
+                    "Average Win / Average Loss"
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                """,
+                [
+                    timestamp,
+                    strategy,
+                    float(m.get("PnL", np.nan)),
+                    float(m.get("Absolute PnL", np.nan)),
+                    float(m.get("CAGR", np.nan)),
+                    float(m.get("Max Drawdown", np.nan)),
+                    float(m.get("Sharpe Ratio", np.nan)),
+                    float(m.get("Sortino Ratio", np.nan)),
+                    float(m.get("Volatility", np.nan)),
+                    float(m.get("Value at Risk (95%)", np.nan)),
+                    float(m.get("Beta to Market", np.nan)),
+                    float(m.get("Kurtosis", np.nan)),
+                    float(m.get("Average Trade Return", np.nan)),
+                    float(m.get("Median Trade Return", np.nan)),
+                    float(m.get("Win/Loss Ratio", np.nan)),
+                    float(m.get("Average Win / Average Loss", np.nan)),
+                ],
+            )
+    finally:
+        con.close()

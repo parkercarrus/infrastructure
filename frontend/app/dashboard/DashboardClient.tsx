@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 type SeriesPoint = { x: string; y: number };
+
 type TradeRow = {
   timestamp: string;
   strategy: string;
@@ -11,6 +12,7 @@ type TradeRow = {
   quantity: number;
   price: number;
 };
+
 type StrategyRow = {
   timestamp: string;
   strategy: string;
@@ -20,19 +22,46 @@ type StrategyRow = {
   n_positions: number;
 };
 
+type PortfolioMetrics = {
+  pnl?: number; // pct, e.g. 0.12
+  pnl_abs?: number; // dollars
+  cagr?: number; // pct
+  max_drawdown?: number; // pct (negative)
+  sharpe?: number;
+  sortino?: number;
+  volatility?: number; // pct-ish (annualized)
+  var95?: number; // pct (usually negative)
+  beta?: number;
+  kurtosis?: number;
+  avg_trade_return?: number; // pct
+  median_trade_return?: number; // pct
+  win_loss_ratio?: number;
+  avg_win_over_avg_loss?: number;
+};
+
+type StrategyMetricsLite = {
+  cagr?: number; // pct
+  sharpe?: number;
+  beta?: number;
+};
+
 const STRATEGIES = ["momentum", "mean_reversion", "pairs", "cluster_v2"] as const;
 
 function formatNum(n: number) {
-  if (Number.isNaN(n) || n === null || n === undefined) return "—";
+  if (n === null || n === undefined || Number.isNaN(n)) return "—";
   return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 function formatMoney(n: number) {
-  if (Number.isNaN(n) || n === null || n === undefined) return "—";
+  if (n === null || n === undefined || Number.isNaN(n)) return "—";
   return n.toLocaleString(undefined, {
     style: "currency",
     currency: "USD",
     maximumFractionDigits: 2,
   });
+}
+function formatPct(n: number) {
+  if (n === null || n === undefined || Number.isNaN(n)) return "—";
+  return (n * 100).toLocaleString(undefined, { maximumFractionDigits: 2 }) + "%";
 }
 
 function LineChart({
@@ -43,8 +72,8 @@ function LineChart({
 }: {
   data: SeriesPoint[];
   height?: number;
-  formatValue: (n: number) => string;   // used for “Latest: …”
-  formatTick: (n: number) => string;    // used for axis labels
+  formatValue: (n: number) => string; // used for “Latest: …”
+  formatTick: (n: number) => string; // used for axis labels
 }) {
   const w = 1000;
   const h = height;
@@ -58,7 +87,7 @@ function LineChart({
   const y1 = maxY + padY;
 
   const n = data.length;
-  const left = 58; // wider for y labels
+  const left = 58;
   const right = 18;
   const top = 14;
   const bottom = 34;
@@ -77,18 +106,17 @@ function LineChart({
   const last = data.at(-1);
   const lastLabel = last ? formatValue(last.y) : "—";
 
-  // ticks
   const tickCount = 5;
   const ticks = Array.from({ length: tickCount }, (_, i) => {
-    const t = i / (tickCount - 1); // 0..1
-    const yVal = y0 + (1 - t) * (y1 - y0); // top tick is y1
+    const t = i / (tickCount - 1);
+    const yVal = y0 + (1 - t) * (y1 - y0);
     const yPix = top + t * innerH;
     return { yVal, yPix };
   });
 
   const firstX = data.at(0)?.x ?? "";
   const lastX = data.at(-1)?.x ?? "";
-  const xLabel = (s: string) => (s ? s.slice(0, 10) : ""); // YYYY-MM-DD
+  const xLabel = (s: string) => (s ? s.slice(0, 10) : "");
 
   return (
     <div className="w-full">
@@ -101,7 +129,6 @@ function LineChart({
         <svg viewBox={`0 0 ${w} ${h}`} className="block h-[260px] w-full">
           <rect x={0} y={0} width={w} height={h} fill="white" />
 
-          {/* horizontal grid + y ticks */}
           {ticks.map((t, idx) => (
             <g key={idx}>
               <line x1={left} x2={w - right} y1={t.yPix} y2={t.yPix} className="stroke-zinc-200" />
@@ -118,11 +145,9 @@ function LineChart({
             </g>
           ))}
 
-          {/* axes */}
           <line x1={left} x2={left} y1={top} y2={h - bottom} className="stroke-zinc-300" />
           <line x1={left} x2={w - right} y1={h - bottom} y2={h - bottom} className="stroke-zinc-300" />
 
-          {/* x labels (first/last) */}
           <text x={left} y={h - 10} textAnchor="start" className="fill-zinc-500" fontSize="12">
             {xLabel(firstX)}
           </text>
@@ -130,7 +155,6 @@ function LineChart({
             {xLabel(lastX)}
           </text>
 
-          {/* line */}
           <polyline
             fill="none"
             stroke="black"
@@ -140,7 +164,6 @@ function LineChart({
             points={points}
           />
 
-          {/* endpoint dot */}
           {n ? <circle cx={sx(n - 1)} cy={sy(data[n - 1].y)} r={3.5} fill="black" /> : null}
         </svg>
       </div>
@@ -149,7 +172,7 @@ function LineChart({
 }
 
 function Sparkline({ data }: { data: number[] }) {
-  const w = 220;
+  const w = 320;
   const h = 140;
   const pad = 6;
   const ys = data.filter((v) => Number.isFinite(v));
@@ -169,7 +192,7 @@ function Sparkline({ data }: { data: number[] }) {
 
   return (
     <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
-      <svg viewBox={`0 0 ${w} ${h}`} className="block h-[300px] w-full">
+      <svg viewBox={`0 0 ${w} ${h}`} className="block h-[190px] w-full">
         <rect x={0} y={0} width={w} height={h} fill="white" />
         <polyline fill="none" stroke="black" strokeWidth={2} points={pts} strokeLinejoin="round" strokeLinecap="round" />
       </svg>
@@ -195,11 +218,22 @@ function SidePill({ side }: { side: string }) {
   );
 }
 
+function MetricCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+      <div className="text-xs text-zinc-500">{label}</div>
+      <div className="pt-1 text-base font-semibold text-zinc-900">{value}</div>
+    </div>
+  );
+}
+
 export default function DashboardClient({
   trades,
   portfolioSeries,
   tradesByStrategy,
   strategyHistory,
+  portfolioMetrics,
+  strategyMetrics,
 }: {
   trades: TradeRow[];
   portfolioSeries: {
@@ -210,6 +244,8 @@ export default function DashboardClient({
   };
   tradesByStrategy: Record<string, TradeRow[]>;
   strategyHistory: StrategyRow[];
+  portfolioMetrics: PortfolioMetrics | null;
+  strategyMetrics: Record<string, StrategyMetricsLite | null>;
 }) {
   const [tab, setTab] = useState<"value" | "cash" | "exposure" | "positions">("value");
 
@@ -252,11 +288,23 @@ export default function DashboardClient({
             {tabBtn("positions", "Positions")}
           </div>
 
-            <LineChart
-            data={series}
-            formatValue={isMoney ? formatMoney : formatNum}
-            formatTick={isMoney ? formatMoney : formatNum}
-            />
+          <LineChart data={series} formatValue={isMoney ? formatMoney : formatNum} formatTick={isMoney ? formatMoney : formatNum} />
+        </div>
+      </section>
+
+      {/* Metrics */}
+      <section className="space-y-4">
+        <h2 className="text-xl tracking-tight">Metrics</h2>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <MetricCard label="PnL" value={portfolioMetrics?.pnl !== undefined ? formatPct(portfolioMetrics.pnl) : "—"} />
+          <MetricCard label="Absolute PnL" value={portfolioMetrics?.pnl_abs !== undefined ? formatMoney(portfolioMetrics.pnl_abs) : "—"} />
+          <MetricCard label="CAGR" value={portfolioMetrics?.cagr !== undefined ? formatPct(portfolioMetrics.cagr) : "—"} />
+          <MetricCard label="Max Drawdown" value={portfolioMetrics?.max_drawdown !== undefined ? formatPct(portfolioMetrics.max_drawdown) : "—"} />
+          <MetricCard label="Sharpe" value={portfolioMetrics?.sharpe !== undefined ? formatNum(portfolioMetrics.sharpe) : "—"} />
+          <MetricCard label="Beta" value={portfolioMetrics?.beta !== undefined ? formatNum(portfolioMetrics.beta) : "—"} />
+          <MetricCard label="Volatility" value={portfolioMetrics?.volatility !== undefined ? formatPct(portfolioMetrics.volatility) : "—"} />
+          <MetricCard label="VaR (95%)" value={portfolioMetrics?.var95 !== undefined ? formatPct(portfolioMetrics.var95) : "—"} />
         </div>
       </section>
 
@@ -318,6 +366,9 @@ export default function DashboardClient({
               .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
               .join(" ");
 
+            const latestVal = rows.length ? rows.at(-1)!.strategy_value : NaN;
+            const sm = strategyMetrics[s] ?? null;
+
             return (
               <a
                 key={s}
@@ -332,9 +383,7 @@ export default function DashboardClient({
                     </div>
 
                     <div className="mt-3 rounded-xl border border-zinc-200 overflow-hidden">
-                      <div className="bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-600">
-                        Recent trades
-                      </div>
+                      <div className="bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-600">Recent trades</div>
                       <div className="overflow-x-auto">
                         <table className="min-w-full text-xs">
                           <thead className="text-zinc-500">
@@ -374,11 +423,33 @@ export default function DashboardClient({
                   <div className="w-full lg:w-[360px]">
                     <div className="text-xs text-zinc-500 pb-2">Strategy value</div>
                     <Sparkline data={spark.length ? spark : [0, 0, 0, 0]} />
-                    <div className="pt-2 text-xs text-zinc-500">
-                      Latest:{" "}
-                      <span className="font-semibold text-zinc-900">
-                        {rows.length ? formatMoney(rows.at(-1)!.strategy_value) : "—"}
-                      </span>
+
+                    <div className="pt-3 grid grid-cols-2 gap-2 text-xs">
+                      <div className="text-zinc-500">
+                        Latest{" "}
+                        <span className="font-semibold text-zinc-900">{rows.length ? formatMoney(latestVal) : "—"}</span>
+                      </div>
+
+                      <div className="text-zinc-500">
+                        CAGR{" "}
+                        <span className="font-semibold text-zinc-900">
+                          {sm?.cagr !== undefined && !Number.isNaN(sm.cagr) ? formatPct(sm.cagr) : "—"}
+                        </span>
+                      </div>
+
+                      <div className="text-zinc-500">
+                        Sharpe{" "}
+                        <span className="font-semibold text-zinc-900">
+                          {sm?.sharpe !== undefined && !Number.isNaN(sm.sharpe) ? formatNum(sm.sharpe) : "—"}
+                        </span>
+                      </div>
+
+                      <div className="text-zinc-500">
+                        Beta{" "}
+                        <span className="font-semibold text-zinc-900">
+                          {sm?.beta !== undefined && !Number.isNaN(sm.beta) ? formatNum(sm.beta) : "—"}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>

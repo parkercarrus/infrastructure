@@ -16,7 +16,11 @@ from src.database.append import (
     append_trade,
     append_portfolios,
     append_strategy_portfolios,
+    append_portfolio_metrics,
+    append_strategy_metrics
 )
+
+from src.stats.getStats import get_data, compute_portfolio_metrics, compute_strategy_metrics
 
 TICKERS = ["AAPL", "MSFT", "AMZN", "GOOG", "META",
            "NVDA", "TSLA", "JPM", "XOM", "KO", "NFLX", "WMT"]
@@ -127,6 +131,12 @@ def main_loop(strategy_dict: dict[str, BaseAlgorithm], price_gen: PriceGenerator
     if trigger_bookkeep():
         append_portfolios(timestamp=now, prices=prices, db_path=db_path)
         append_strategy_portfolios(timestamp=now, prices=prices, db_path=db_path)
+        portfolio_df, strategy_df, _ = get_data()
+        if len(portfolio_df) >= 2:
+            p_metrics = compute_portfolio_metrics(portfolio_df)
+            s_metrics = compute_strategy_metrics(strategy_df)
+            append_portfolio_metrics(timestamp=now, metrics=p_metrics, db_path=db_path)
+            append_strategy_metrics(timestamp=now, metrics_by_strategy=s_metrics, db_path=db_path)
 
 def main() -> None:
     print("Controller Started.")
@@ -134,7 +144,7 @@ def main() -> None:
     strategies, price_gen = startup()
     print(f"Initialized {len(strategies)} strategies, initialized price generator, and cleared DB.")
 
-    for i in range(1000):
+    for i in range(200):
         main_loop(strategies, price_gen, DB_PATH)
         time.sleep(0.1)
         if (i) % 20 == 0:

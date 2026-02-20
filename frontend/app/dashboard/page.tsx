@@ -29,6 +29,29 @@ type StrategyRow = {
   n_positions: number;
 };
 
+type PortfolioMetrics = {
+  pnl?: number;
+  pnl_abs?: number;
+  cagr?: number;
+  max_drawdown?: number;
+  sharpe?: number;
+  sortino?: number;
+  volatility?: number;
+  var95?: number;
+  beta?: number;
+  kurtosis?: number;
+  avg_trade_return?: number;
+  median_trade_return?: number;
+  win_loss_ratio?: number;
+  avg_win_over_avg_loss?: number;
+};
+
+type StrategyMetricsLite = {
+  cagr?: number;
+  sharpe?: number;
+  beta?: number;
+};
+
 const STRATEGIES = ["momentum", "mean_reversion", "pairs", "cluster_v2"] as const;
 
 function normalizeTs(x: any) {
@@ -37,11 +60,7 @@ function normalizeTs(x: any) {
   return String(x);
 }
 
-async function queryAll<T>(
-  dbPath: string,
-  sql: string,
-  params: any[] = []
-): Promise<T[]> {
+async function queryAll<T>(dbPath: string, sql: string, params: any[] = []): Promise<T[]> {
   const db = new duckdb.Database(dbPath);
   const conn = db.connect();
 
@@ -65,7 +84,7 @@ async function queryAll<T>(
 async function getData() {
   const dbPath = path.join(process.cwd(), "..", "src", "algory.duckdb");
 
-  // Recent trades
+  // Recent trades (global)
   const tradesRaw = await queryAll<any>(
     dbPath,
     `
@@ -146,24 +165,75 @@ async function getData() {
     }));
   }
 
-  return { trades, portfolio, strategyHistory, tradesByStrategy };
+  // Latest portfolio metrics (1 row)
+  const pmRaw = await queryAll<any>(
+    dbPath,
+    `
+      SELECT *
+      FROM portfolio_metrics
+      ORDER BY timestamp DESC
+      LIMIT 1
+    `
+  );
+
+  const portfolioMetrics: PortfolioMetrics | null =
+    pmRaw.length === 0
+      ? null
+      : {
+          pnl: Number(pmRaw[0]["PnL"]),
+          pnl_abs: Number(pmRaw[0]["Absolute PnL"]),
+          cagr: Number(pmRaw[0]["CAGR"]),
+          max_drawdown: Number(pmRaw[0]["Max Drawdown"]),
+          sharpe: Number(pmRaw[0]["Sharpe Ratio"]),
+          sortino: Number(pmRaw[0]["Sortino Ratio"]),
+          volatility: Number(pmRaw[0]["Volatility"]),
+          var95: Number(pmRaw[0]["Value at Risk (95%)"]),
+          beta: Number(pmRaw[0]["Beta to Market"]),
+          kurtosis: Number(pmRaw[0]["Kurtosis"]),
+          avg_trade_return: Number(pmRaw[0]["Average Trade Return"]),
+          median_trade_return: Number(pmRaw[0]["Median Trade Return"]),
+          win_loss_ratio: Number(pmRaw[0]["Win/Loss Ratio"]),
+          avg_win_over_avg_loss: Number(pmRaw[0]["Average Win / Average Loss"]),
+        };
+
+  // Latest strategy metrics per strategy
+  const smRows = await queryAll<any>(
+    dbPath,
+    `
+      SELECT *
+      FROM (
+        SELECT
+          *,
+          ROW_NUMBER() OVER (PARTITION BY strategy ORDER BY timestamp DESC) AS rn
+        FROM strategy_metrics
+      )
+      WHERE rn = 1
+    `
+  );
+
+  const strategyMetrics: Record<string, StrategyMetricsLite | null> = {};
+  for (const s of STRATEGIES) strategyMetrics[s] = null;
+
+  for (const r of smRows) {
+    const strat = String(r.strategy);
+    strategyMetrics[strat] = {
+      cagr: Number(r["CAGR"]),
+      sharpe: Number(r["Sharpe Ratio"]),
+      beta: Number(r["Beta to Market"]),
+    };
+  }
+
+  return { trades, portfolio, strategyHistory, tradesByStrategy, portfolioMetrics, strategyMetrics };
 }
 
 export default async function DashboardPage() {
-  const { trades, portfolio, strategyHistory, tradesByStrategy } =
-    await getData();
+  const { trades, portfolio, strategyHistory, tradesByStrategy, portfolioMetrics, strategyMetrics } = await getData();
 
   const portfolioSeries = {
     value: portfolio.map((r) => ({ x: r.timestamp, y: r.total_value })),
     cash: portfolio.map((r) => ({ x: r.timestamp, y: r.total_cash })),
-    exposure: portfolio.map((r) => ({
-      x: r.timestamp,
-      y: r.total_value - r.total_cash,
-    })),
-    positions: portfolio.map((r) => ({
-      x: r.timestamp,
-      y: r.total_positions,
-    })),
+    exposure: portfolio.map((r) => ({ x: r.timestamp, y: r.total_value - r.total_cash })),
+    positions: portfolio.map((r) => ({ x: r.timestamp, y: r.total_positions })),
   };
 
   return (
@@ -173,6 +243,8 @@ export default async function DashboardPage() {
         portfolioSeries={portfolioSeries}
         tradesByStrategy={tradesByStrategy}
         strategyHistory={strategyHistory}
+        portfolioMetrics={portfolioMetrics}
+        strategyMetrics={strategyMetrics}
       />
     </main>
   );

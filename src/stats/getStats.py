@@ -57,10 +57,13 @@ def compute_portfolio_metrics(portfolio_df: pd.DataFrame) -> dict[str, Any]:
     pnl_pct = end_val / start_val - 1 if start_val > 0 else np.nan
 
     # ---- CAGR ----
-    if start_val > 0:
-        cagr = (end_val / start_val) ** (1 / years) - 1
-    else:
+    if years < 1/365:
         cagr = np.nan
+    else:
+        if start_val > 0:
+            cagr = (end_val / start_val) ** (1 / years) - 1
+        else:
+            cagr = np.nan
 
     # ---- Max Drawdown ----
     running_max = df["total_value"].cummax()
@@ -191,10 +194,13 @@ def compute_strategy_metrics(strategy_df: pd.DataFrame) -> dict[str, dict[str, A
         pnl_pct = end_val / start_val - 1 if start_val > 0 else np.nan
 
         # ---- CAGR ----
-        if start_val > 0:
-            cagr = (end_val / start_val) ** (1 / years) - 1
-        else:
+        if years < 1/365:
             cagr = np.nan
+        else:
+            if start_val > 0:
+                cagr = (end_val / start_val) ** (1 / years) - 1
+            else:
+                cagr = np.nan
 
         # ---- Max Drawdown ----
         running_max = df["strategy_value"].cummax()

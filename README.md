@@ -19,7 +19,7 @@
 3. **Run the Controller**
 
     ```bash
-    python -m controller.runController
+    python -m src.controller.seed_controller
     ```
 
 3. **Run the BFF (Backend for Frontend)**
