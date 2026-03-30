@@ -29,6 +29,13 @@ export default function DashboardLayout({
               Dashboard
             </Link>
 
+            <Link
+              href="/dashboard/portfolio"
+              className="hover:text-black text-zinc-600 transition"
+            >
+              Portfolio
+            </Link>
+
             <a
               href="https://www.algorycapital.com"
               target="_blank"
