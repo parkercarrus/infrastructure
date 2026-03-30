@@ -458,6 +458,28 @@ export default function DashboardClient({
           })}
         </div>
       </section>
+
+      {/* Live Portfolio */}
+      <section className="space-y-4">
+        <h2 className="text-xl tracking-tight">Live Portfolio</h2>
+
+        <a
+          href="/dashboard/portfolio"
+          className="block rounded-2xl border border-zinc-200 bg-white p-5 hover:border-zinc-300 hover:shadow-sm transition"
+        >
+          <div className="flex items-start justify-between">
+            <div>
+              <h3 className="text-lg font-semibold">Real Holdings</h3>
+              <p className="mt-1 text-sm text-zinc-500 max-w-prose">
+                Live positions sourced directly from Algory Capital&apos;s Google
+                Sheet — updated automatically. View cost basis, entry dates, portfolio
+                weights, and holding periods for every open position.
+              </p>
+            </div>
+            <span className="text-xs text-zinc-500 underline shrink-0 ml-4">Open</span>
+          </div>
+        </a>
+      </section>
     </div>
   );
 }
